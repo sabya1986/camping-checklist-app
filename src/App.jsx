@@ -14,7 +14,7 @@ const SECTIONS = [
     note: "Bedding, plush mattresses & mosquito netting are provided. Outlets in each tent.",
     items: [
       { id: "s1", text: "Extra sleeping pads/air mattresses for overflow (camp provides 8 beds for 13 people)", required: true },
-      { id: "s2", text: "Sleeping bags or lightweight blankets (nights ~54°F — bring a layer!)", required: true },
+      { id: "s2", text: "Sleeping bags or warm blankets (nights 48–50°F — it'll be chilly, pack something warm!)", required: true },
       { id: "s3", text: "Pillows (not provided)", required: true },
       { id: "s4", text: "Portable fan (outlets available in tents)", required: false },
       { id: "s5", text: "Earplugs / sleep masks", required: false },
@@ -26,7 +26,7 @@ const SECTIONS = [
     id: "clothing",
     emoji: "👕",
     label: "Clothing & Personal",
-    note: "Temps: highs 74–80°F / lows 54–56°F. Pack layers. Rain is possible Fri evening.",
+    note: "Temps: highs 65–68°F / lows 48–50°F. Pack warm layers! Rain possible Fri (24%) and more likely Sat (40%).",
     items: [
       { id: "c1", text: "Light tees / shorts for daytime (2–3 per person)", required: true },
       { id: "c2", text: "Fleece or light jacket for evenings (each adult & child)", required: true },
