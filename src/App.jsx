@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 const WEATHER = {
-  fri: { day: "Fri 5/22 — Arrival", high: "65°F", low: "48°F", desc: "Mostly cloudy. 24% rain chance. Cool — pack a jacket for arrival evening. 11 mph winds.", icon: "🌥️" },
-  sat: { day: "Sat 5/23 — Full Day", high: "68°F", low: "50°F", desc: "Cloudy, 40% rain chance. Dress in layers! Use canvas living room as rain backup. Grill can still work!", icon: "🌧️" },
-  sun: { day: "Sun 5/24 — Checkout", high: "TBD", low: "—", desc: "Not yet in 10-day window. Check weather.com around May 17. Checkout by 1 PM.", icon: "❓" },
+  fri: { day: "Fri 5/22 — Arrival", high: "65°F", low: "47°F", desc: "Mostly cloudy. 24% rain chance. Cool & breezy — pack a jacket for arrival evening. 11 mph winds.", icon: "🌥️" },
+  sat: { day: "Sat 5/23 — Full Day", high: "68°F", low: "51°F", desc: "Showers, 40% rain chance. Dress in layers! Use canvas living room as rain backup. Grill can still work!", icon: "🌧️" },
+  sun: { day: "Sun 5/24 — Checkout", high: "72°F", low: "52°F", desc: "Mostly cloudy. 24% rain chance. Warmest day of the trip! Pack up in the morning — checkout by 1 PM.", icon: "🌥️" },
 };
 
 const SECTIONS = [
@@ -14,7 +14,7 @@ const SECTIONS = [
     note: "Bedding, plush mattresses & mosquito netting are provided. Outlets in each tent.",
     items: [
       { id: "s1", text: "Extra sleeping pads/air mattresses for overflow (camp provides 8 beds for 13 people)", required: true },
-      { id: "s2", text: "Sleeping bags or warm blankets (nights 48–50°F — it'll be chilly, pack something warm!)", required: true },
+      { id: "s2", text: "Sleeping bags or warm blankets (nights 47–51°F — it'll be chilly, pack something warm!)", required: true },
       { id: "s3", text: "Pillows (not provided)", required: true },
       { id: "s4", text: "Portable fan (outlets available — but likely unnecessary given 65°F highs & chilly nights)", required: false },
       { id: "s5", text: "Earplugs / sleep masks", required: false },
@@ -26,17 +26,17 @@ const SECTIONS = [
     id: "clothing",
     emoji: "👕",
     label: "Clothing & Personal",
-    note: "Temps: highs 65–68°F / lows 48–50°F. Pack warm layers! Rain possible Fri (24%) and more likely Sat (40%).",
+    note: "Temps: highs 65–72°F / lows 47–51°F. Pack warm layers! Rain possible Fri (24%), likely Sat (40%), light chance Sun (24%).",
     items: [
       { id: "c1", text: "Light tees + jeans or light pants for daytime (2–3 sets per person) — 65–68°F with wind & clouds, shorts will feel chilly", required: true },
-      { id: "c2", text: "Warm fleece, hoodie, or mid-weight jacket for evenings — nights drop to 48–50°F, a light jacket won't be enough!", required: true },
+      { id: "c2", text: "Warm fleece, hoodie, or mid-weight jacket for evenings — nights drop to 47–51°F, a light jacket won't be enough!", required: true },
       { id: "c3", text: "Rain jacket / poncho for each person", required: true },
       { id: "c4", text: "Comfortable hiking/walking shoes (trail terrain)", required: true },
       { id: "c5", text: "Sandals / flip flops for camp lounging & showers", required: true },
       { id: "c6", text: "Swimwear (probably skip — 65–68°F & cloudy/rainy makes Lake Geneva swimming unlikely)", required: false },
       { id: "c7", text: "Pajamas for kids (a warm set for cooler nights)", required: true },
       { id: "c8", text: "Socks (extra pairs — 3 per person minimum)", required: true },
-      { id: "c9", text: "Warm beanie or knit hat (skip the sun hat — it'll be mostly cloudy; a beanie is essential for 48–50°F nights)", required: true },
+      { id: "c9", text: "Warm beanie or knit hat (skip the sun hat — it'll be mostly cloudy; a beanie is essential for 47–51°F nights)", required: true },
       { id: "c10", text: "Underwear (3 per person)", required: true },
     ],
   },
@@ -387,7 +387,7 @@ export default function CampingChecklist() {
               borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: "#ffd966",
               fontSize: 13, fontStyle: "italic",
             }}>
-              🌧️ <strong>Saturday May 23</strong> — Forecast: <strong>High 68°F, Low 50°F, 40% rain chance.</strong> Friday arrival is 65°F / 24% rain. Cooler and wetter than ideal — plan outdoor activities for the morning, and use the canvas living room as your afternoon/evening rain refuge. Grill still works in light rain!
+              🌧️ <strong>Saturday May 23</strong> — Forecast: <strong>High 68°F, Low 51°F, 40% rain / Showers.</strong> Friday arrival: 65°F / 47°F low / 24% rain. Sunday checkout: 72°F / mostly cloudy — warmest day! Plan outdoor activities for Sat morning, use the canvas living room as your rain refuge. Grill still works in light rain!
             </div>
             {ACTIVITIES.map((block) => (
               <div key={block.time} style={{ marginBottom: 24 }}>
