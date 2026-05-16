@@ -260,10 +260,10 @@ const SUPPLY_SECTIONS = [
       { id: "chicken",     name: "CHICKEN",                   family: "prerna"  }, // PnC: Prerna
       { id: "mutton",      name: "MUTTON",                    family: "farzana" }, // PnC: Farzana
       { id: "veggies",     name: "VEGGIES",                   family: "upasha"  }, // PnC: Upasha
-      { id: "shrimp",      name: "SHRIMP",                    family: "farhana" }, // PnC: Farhana
-      { id: "paneer1",     name: "PANEER 1",                  family: "farhana" }, // PnC: Farhana
+      { id: "shrimp",      name: "SHRIMP",                    family: "" }, // PnC: Farhana
+      { id: "paneer1",     name: "PANEER 1",                  family: "" }, // PnC: Farhana
       { id: "paneer2",     name: "PANEER 2",                  family: "upasha"  }, // PnC: Upasha
-      { id: "biryani",     name: "Biryani [Chicken/Shrimp]",  family: "farhana" }, // PnC: Farhana
+      { id: "biryani",     name: "Biryani [Chicken/Shrimp]",  family: "" }, // PnC: Farhana
       { id: "maggie",      name: "MAGGIE",                    family: "upasha"  }, // PnC: Upasha
       { id: "fish-gen",    name: "FISH (general)",            family: ""        },
       { id: "chicken-tand",name: "CHICKEN TANDOORI",          family: ""        },
@@ -274,7 +274,7 @@ const SUPPLY_SECTIONS = [
   { id: "breakfast", emoji: "🍳", label: "Breakfast", note: "Saturday morning spread.",
     items: [
       { id: "sausage",     name: "Sausage",                                              family: "upasha"  }, // PnC: Upasha
-      { id: "eggs",        name: "EGGS",                                                 family: "farhana" }, // PnC: Farhana
+      { id: "eggs",        name: "EGGS",                                                 family: "" }, // PnC: Farhana
       { id: "shred-cheese",name: "Shredded CHEESE",                                     family: "upasana" }, // Sheet1: Upasana (different item from CHEESE→Upasha)
       { id: "bread2",      name: "BREAD (2)",                                            family: "upasana" }, // Sheet1: Upasana (different item from BREAD→Prerna)
       { id: "hashbrown",   name: "HASHBROWN",                                            family: "upasha"  }, // PnC: Upasha
@@ -289,17 +289,17 @@ const SUPPLY_SECTIONS = [
   { id: "common-nonfood", emoji: "🧹", label: "Common Items — Non Food", note: "Shared supplies and equipment.",
     items: [
       { id: "plates",    name: "PLATES",              family: "farzana" }, // PnC: Farzana
-      { id: "cups",      name: "CUPS [Water & Tea]",  family: "farhana" }, // PnC: Farhana
+      { id: "cups",      name: "CUPS [Water & Tea]",  family: "" }, // PnC: Farhana
       { id: "tissues",   name: "TISSUES CleanX",      family: "upasha"  }, // PnC: Upasha
       { id: "trashbag",  name: "TRASHBAG",            family: "farzana" }, // PnC: Farzana
       { id: "spoons",    name: "SPOON AND FORKS",     family: "prerna"  }, // PnC: Prerna
-      { id: "cutboard",  name: "CUTTING BOARD",       family: "farhana" }, // PnC: Farhana/Upasha → Farhana
+      { id: "cutboard",  name: "CUTTING BOARD",       family: "" }, // PnC: Farhana/Upasha → Farhana
       { id: "knife",     name: "KNIFE",               family: "all"     }, // PnC: Farhana/Upasha → All
-      { id: "alfoil",    name: "ALUMINIUM FOIL (2)",  family: "farhana" }, // PnC: Farhana
+      { id: "alfoil",    name: "ALUMINIUM FOIL (2)",  family: "" }, // PnC: Farhana
       { id: "ziplock",   name: "ZIPLOCK",             family: "upasha"  }, // PnC: Upasha
-      { id: "papertowel",name: "Paper Towel",         family: "farhana" }, // PnC: Farhana
+      { id: "papertowel",name: "Paper Towel",         family: "" }, // PnC: Farhana
       { id: "tikifluid", name: "TIKI LIGHT FLUID",    family: "prerna"  }, // PnC: Prerna
-      { id: "dishsoap",  name: "Dish Soap And Brush", family: "farhana" }, // PnC: Farhana
+      { id: "dishsoap",  name: "Dish Soap And Brush", family: "" }, // PnC: Farhana
       { id: "strainer",  name: "Strainer",            family: "upasana" }, // Sheet1: Upasana
       { id: "fogger",    name: "FOGGER",              family: "upasha"  }, // Sheet1: Upasha/Prerna → Upasha
       { id: "tablecloth",name: "Table cloth",         family: "farzana" }, // Main Sheet Farzana col
@@ -321,24 +321,24 @@ const SUPPLY_SECTIONS = [
   },
   { id: "snacks", emoji: "🍫", label: "Snacks & Condiments", note: "Drinks, snacks, and cooking basics.",
     items: [
-      { id: "soda",       name: "SODA",                   family: "farhana" }, // PnC: Farhana
+      { id: "soda",       name: "SODA",                   family: "" }, // PnC: Farhana
       { id: "chips",      name: "Chips",                  family: "upasha"  }, // PnC: Upasha
-      { id: "pitachips",  name: "PITA CHIPS",             family: "farhana" }, // Main Sheet Farhana col
+      { id: "pitachips",  name: "PITA CHIPS",             family: "" }, // Main Sheet Farhana col
       { id: "fruits",     name: "FRUITS 1 2 3",           family: "prerna"  }, // PnC: Prerna
       { id: "tea",        name: "TEA",                    family: "farzana" }, // PnC: Farzana
       { id: "coffee",     name: "Coffee",                 family: "prerna"  }, // Sheet1: Prerna
       { id: "milk",       name: "MILK",                   family: "prerna"  }, // PnC: Prerna
       { id: "biscuits",   name: "BISCUITS",               family: "farzana" }, // PnC: Farzana
-      { id: "sugar",      name: "SUGAR",                  family: "farhana" }, // PnC: Farhana
-      { id: "salt",       name: "SALT",                   family: "farhana" }, // PnC: Farhana
+      { id: "sugar",      name: "SUGAR",                  family: "" }, // PnC: Farhana
+      { id: "salt",       name: "SALT",                   family: "" }, // PnC: Farhana
       { id: "pepper",     name: "Pepper",                 family: "farzana" }, // Sheet1: Farzana
       { id: "spices",     name: "Spices",                 family: "upasha"  }, // Main Sheet Upasha col
-      { id: "oil",        name: "OIL",                    family: "farhana" }, // PnC: Farhana
-      { id: "butter",     name: "BUTTER",                 family: "farhana" }, // PnC: Farhana
+      { id: "oil",        name: "OIL",                    family: "" }, // PnC: Farhana
+      { id: "butter",     name: "BUTTER",                 family: "" }, // PnC: Farhana
       { id: "ketchup",    name: "KETCHUP",                family: "upasha"  }, // PnC: Upasha
       { id: "jam",        name: "JAM",                    family: "farzana" }, // PnC: Farzana
       { id: "cheeseit",   name: "Cheese it",              family: "upasha"  }, // Main Sheet Upasha col
-      { id: "fri-tea",    name: "Tea for friday evening", family: "farhana" }, // Main Sheet Farhana col
+      { id: "fri-tea",    name: "Tea for friday evening", family: "" }, // Main Sheet Farhana col
       { id: "watermelon", name: "Watermelon",             family: "farzana" }, // Sheet1: Farzana
       { id: "grapes",     name: "Grapes & strawberries",  family: "all"     }, // Sheet1: All
       { id: "ranch",      name: "Ranch",                  family: "upasha"  }, // Sheet1: Upasha
@@ -458,12 +458,12 @@ export default function CampingChecklist() {
 
   // ── Supply List state ──
   const [families, setFamilies] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cc_families")) || ["farhana","upasha","upasana","farzana","prerna"]; }
-    catch { return ["farhana","upasha","upasana","farzana","prerna"]; }
+    try { return (JSON.parse(localStorage.getItem("cc_families")) || ["upasha","upasana","farzana","prerna"]).filter(f => f !== "farhana"); }
+    catch { return ["upasha","upasana","farzana","prerna"]; }
   });
   const [familyNames, setFamilyNames] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cc_familyNames")) || { farhana:"Farhana", upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" }; }
-    catch { return { farhana:"Farhana", upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" }; }
+    try { return JSON.parse(localStorage.getItem("cc_familyNames")) || { upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" }; }
+    catch { return { upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" }; }
   });
   const [assignments, setAssignments] = useState(() => {
     try {
@@ -517,16 +517,28 @@ export default function CampingChecklist() {
   // ── New family name ──
   const [newFamilyName, setNewFamilyName] = useState("");
 
-  // ── One-time migration: add Upasana if missing from stored state ──
+  // ── One-time migration: ensure Upasana exists and Farhana is removed ──
   useEffect(() => {
-    setFamilies((prev) => prev.includes("upasana") ? prev : (() => {
-      const next = [...prev];
-      const idx = next.indexOf("upasha");
-      next.splice(idx >= 0 ? idx + 1 : next.length, 0, "upasana");
+    setFamilies((prev) => {
+      let next = prev.filter(f => f !== "farhana");
+      if (!next.includes("upasana")) {
+        const idx = next.indexOf("upasha");
+        next.splice(idx >= 0 ? idx + 1 : next.length, 0, "upasana");
+      }
       return next;
-    })());
-    setFamilyNames((prev) => prev.upasana ? prev : { ...prev, upasana: "Upasana" });
-    setFamilyNames((prev) => prev.upasha !== "Upasha" ? { ...prev, upasha: "Upasha" } : prev);
+    });
+    setFamilyNames((prev) => {
+      const next = { ...prev };
+      delete next.farhana;
+      if (!next.upasana) next.upasana = "Upasana";
+      if (next.upasha !== "Upasha") next.upasha = "Upasha";
+      return next;
+    });
+    setAssignments((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach(id => { if (next[id] === "farhana") next[id] = ""; });
+      return next;
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── localStorage persistence ──
