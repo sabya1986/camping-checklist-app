@@ -864,6 +864,7 @@ export default function CampingChecklist() {
           { id: "supply",    label: "🛍️ Supply List" },
           { id: "menu",      label: "🍽️ Meal Plan" },
           { id: "stores",    label: "🛒 Nearby Stores" },
+          { id: "campinfo",  label: "🏕️ Camp Info" },
         ].map((tab) => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             flex: 1, minWidth: 110, padding: "14px 8px", border: "none", cursor: "pointer",
@@ -1153,6 +1154,125 @@ export default function CampingChecklist() {
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ════ CAMP INFO TAB ════ */}
+        {activeTab === "campinfo" && (
+          <div style={{ paddingTop: 20 }}>
+
+            {/* Key Times */}
+            <div style={{ background: "rgba(0,0,0,.3)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(143,184,106,.3)" }}>
+              <h3 style={{ margin: "0 0 12px", color: "#d4e8a8", fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>⏰ Key Times</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+                {[
+                  { emoji: "🟢", label: "Check-In", value: "After 4:00 PM", sub: "(but before 8 PM)" },
+                  { emoji: "🔴", label: "Check-Out", value: "Before 1:00 PM", sub: "Sunday May 25" },
+                  { emoji: "🌙", label: "Quiet Hours", value: "10 PM – 7 AM", sub: "No amplified music" },
+                ].map((t) => (
+                  <div key={t.label} style={{ background: "rgba(143,184,106,.08)", borderRadius: 8, padding: "10px 13px", border: "1px solid rgba(143,184,106,.2)", textAlign: "center" }}>
+                    <div style={{ fontSize: 22, marginBottom: 4 }}>{t.emoji}</div>
+                    <div style={{ color: "#8fb86a", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{t.label}</div>
+                    <div style={{ color: "#d4e8a8", fontWeight: "bold", fontSize: 14 }}>{t.value}</div>
+                    <div style={{ color: "#8aaa68", fontSize: 11, marginTop: 2 }}>{t.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Parking & Getting to Your Site */}
+            <div style={{ background: "rgba(0,0,0,.3)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(143,184,106,.25)" }}>
+              <h3 style={{ margin: "0 0 12px", color: "#d4e8a8", fontSize: 15 }}>🚗 Parking & Getting to Your Campsite</h3>
+              {[
+                "Follow the long driveway all the way in — two parking areas: one by the detached garage, one in front of the house by the welcome sign. Pick the lot closest to your site (signs will guide you).",
+                "No need to officially check in anywhere — just unload and go! The house beyond the welcome sign is a private residence, not an office.",
+                "Vehicles are NOT allowed on the path to the campsites. Free golf carts are in the parking lot for loading/unloading. Back seats fold down for more space.",
+                "Drive carts only on the designated cart path (see Camp Map). They are not built for the walking trails.",
+                "Follow the yellow camp signs to your site — whether walking or driving the cart.",
+                "Return carts to the lot when done, turn the key to OFF, and do not leave carts at your campsite. Children may NOT drive the carts under any circumstances.",
+              ].map((tip, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: "1px solid rgba(143,184,106,.1)" }}>
+                  <span style={{ color: "#8fb86a", fontSize: 13, marginTop: 1, flexShrink: 0 }}>•</span>
+                  <span style={{ color: "#c8daa8", fontSize: 13, lineHeight: 1.5 }}>{tip}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Things to Bring */}
+            <div style={{ background: "rgba(0,0,0,.3)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(143,184,106,.25)" }}>
+              <h3 style={{ margin: "0 0 12px", color: "#d4e8a8", fontSize: 15 }}>🎒 Things to Bring</h3>
+              {[
+                { text: "Bring your own food and drinks. The grocery store in town will have what you need. All sites have mini-fridges.", highlight: false },
+                { text: "Bring your own toiletries, shower items, towels, sunscreen, allergy medicine, and insect repellent. Remember — this is camping and there are mosquitoes.", highlight: false },
+                { text: "Pack sturdy sneakers for the trails. Flip flops are not recommended — terrain is uneven. If rain is expected, pack boots (grounds get muddy).", highlight: false },
+                { text: "🐕 No dogs on the bedding. Bring a dog bed. Pick up all pet waste before checkout. Dogs may not be left unattended inside camping units.", highlight: false },
+                { text: "🪵 Firewood: 4 free bundles included (2 per day). Extra bundles are $5 each — Venmo @Camp-Kettlewood before checkout. NO outside wood allowed (to prevent infestations).", highlight: true },
+                { text: "✅ Camp provides: cookware & eating utensils, beds & all bedding, electricity & outlets, fire starters, coffee & coffee maker, one 5-burner outdoor grill & grill utensils, string lights, flush toilets, sinks, outdoor showers, seating, picnic tables, fans, and A/C in some units.", highlight: false },
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "1px solid rgba(143,184,106,.1)", ...(item.highlight ? { background: "rgba(251,191,36,.07)", margin: "0 -8px", padding: "7px 8px", borderRadius: 6 } : {}) }}>
+                  <span style={{ color: item.highlight ? "#fbbf24" : "#8fb86a", fontSize: 13, marginTop: 1, flexShrink: 0 }}>{item.highlight ? "⚠" : "•"}</span>
+                  <span style={{ color: item.highlight ? "#fde68a" : "#c8daa8", fontSize: 13, lineHeight: 1.5 }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Neighbors */}
+            <div style={{ background: "rgba(0,0,0,.3)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(143,184,106,.25)" }}>
+              <h3 style={{ margin: "0 0 12px", color: "#d4e8a8", fontSize: 15 }}>🤝 Meet Your Neighbors</h3>
+              {[
+                "Do not trespass on neighboring property — including the farm and fields surrounding the camp.",
+                "Be courteous to fellow campers. No amplified music or excessively loud noise from 10 PM to 7 AM.",
+                "No unauthorized guests or day visitors allowed at your site unless previously coordinated with camp.",
+              ].map((tip, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: "1px solid rgba(143,184,106,.1)" }}>
+                  <span style={{ color: "#8fb86a", fontSize: 13, marginTop: 1, flexShrink: 0 }}>•</span>
+                  <span style={{ color: "#c8daa8", fontSize: 13, lineHeight: 1.5 }}>{tip}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Clean Up */}
+            <div style={{ background: "rgba(0,0,0,.3)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(143,184,106,.25)" }}>
+              <h3 style={{ margin: "0 0 12px", color: "#d4e8a8", fontSize: 15 }}>🧹 Clean Up</h3>
+              {[
+                { text: "Leave the site the way you found it. No need to make or strip the bedding — camp handles that and sanitation.", highlight: false },
+                { text: "All decorations, wool blankets, and furnishings must be undamaged at checkout. Most are one-of-a-kind antiques.", highlight: false },
+                { text: "⚠ Bedding and blankets must NOT be taken outside under any circumstances. Fines apply if burrs or mud stains require cleaning.", highlight: true },
+                { text: "⚠ Wash all cookware/dishes at the well water stations near each site — do NOT rinse food down the bathroom or trailer sink drains.", highlight: true },
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "1px solid rgba(143,184,106,.1)", ...(item.highlight ? { background: "rgba(239,68,68,.07)", margin: "0 -8px", padding: "7px 8px", borderRadius: 6 } : {}) }}>
+                  <span style={{ color: item.highlight ? "#ef4444" : "#8fb86a", fontSize: 13, marginTop: 1, flexShrink: 0 }}>{item.highlight ? "⚠" : "•"}</span>
+                  <span style={{ color: item.highlight ? "#fca5a5" : "#c8daa8", fontSize: 13, lineHeight: 1.5 }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Showers & Bathrooms */}
+            <div style={{ background: "rgba(0,0,0,.3)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(143,184,106,.25)" }}>
+              <h3 style={{ margin: "0 0 12px", color: "#d4e8a8", fontSize: 15 }}>🚿 Showers & Bathrooms</h3>
+              {[
+                "Two full-plumbing bathroom buildings on the property for all guests. Also one Port-a-Potty near Deer Run and Crow's Nest.",
+                "Please keep restrooms clean for the next person.",
+                "Two outdoor open-air showers — shampoo, conditioner, and body wash are provided.",
+                "Bring your own shower shoes and towels (not provided).",
+                "Flush only toilet paper. Nothing else.",
+              ].map((tip, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: "1px solid rgba(143,184,106,.1)" }}>
+                  <span style={{ color: "#8fb86a", fontSize: 13, marginTop: 1, flexShrink: 0 }}>•</span>
+                  <span style={{ color: "#c8daa8", fontSize: 13, lineHeight: 1.5 }}>{tip}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* WiFi */}
+            <div style={{ background: "rgba(59,130,246,.1)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, border: "1px solid rgba(59,130,246,.3)", textAlign: "center" }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📵</div>
+              <h3 style={{ margin: "0 0 6px", color: "#bfdbfe", fontSize: 15 }}>WiFi</h3>
+              <p style={{ margin: 0, color: "#93c5fd", fontSize: 14, fontStyle: "italic" }}>
+                "There isn't any. BUT we promise you'll find a better connection while you're here 😊"
+              </p>
+            </div>
+
           </div>
         )}
 
