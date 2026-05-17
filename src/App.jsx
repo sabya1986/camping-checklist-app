@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { db } from "./firebase";
+import { ref as dbRef, onValue, set } from "firebase/database";
 
 // ── Packing List Data ──────────────────────────────────────────────────────
 
@@ -457,42 +459,21 @@ export default function CampingChecklist() {
   const pct = Math.round((checkedCount / totalCount) * 100);
 
   // ── Supply List state ──
-  const [families, setFamilies] = useState(() => {
-    try { return (JSON.parse(localStorage.getItem("cc_families")) || ["upasha","upasana","farzana","prerna"]).filter(f => f !== "farhana"); }
-    catch { return ["upasha","upasana","farzana","prerna"]; }
-  });
-  const [familyNames, setFamilyNames] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cc_familyNames")) || { upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" }; }
-    catch { return { upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" }; }
-  });
+  const [families, setFamilies] = useState(["upasha","upasana","farzana","prerna"]);
+  const [familyNames, setFamilyNames] = useState({ upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" });
   const [assignments, setAssignments] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("cc_assignments"));
-      if (saved) return saved;
-    } catch {}
     const init = {};
     SUPPLY_SECTIONS.forEach((sec) => sec.items.forEach((it) => { init[it.id] = it.family || ""; }));
     return init;
   });
   const [supplyFilter, setSupplyFilter] = useState("all");
-  const [supplyChecked, setSupplyChecked] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cc_supplyChecked")) || {}; }
-    catch { return {}; }
-  });
+  const [supplyChecked, setSupplyChecked] = useState({});
   const [openSupplySections, setOpenSupplySections] = useState({
     individual: true, "lunch-dinner": true, breakfast: true,
     "common-nonfood": false, snacks: false, kids: false, dessert: false, friday: false, "from-menu": false,
   });
-  const [mealSlots, setMealSlots] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("cc_mealSlots")) || INITIAL_MEAL_SLOTS; }
-    catch { return INITIAL_MEAL_SLOTS; }
-  });
-  const [fromMenuItems, setFromMenuItems] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("cc_fromMenuItems"));
-      return saved || computeInitialFromMenu(INITIAL_MEAL_SLOTS);
-    } catch { return computeInitialFromMenu(INITIAL_MEAL_SLOTS); }
-  });
+  const [mealSlots, setMealSlots] = useState(INITIAL_MEAL_SLOTS);
+  const [fromMenuItems, setFromMenuItems] = useState(() => computeInitialFromMenu(INITIAL_MEAL_SLOTS));
 
   // ── Modal state ──
   const [showFamiliesModal, setShowFamiliesModal] = useState(false);
@@ -500,6 +481,11 @@ export default function CampingChecklist() {
   const [showDishDetailModal, setShowDishDetailModal] = useState(false);
   const [activeDishId, setActiveDishId] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+
+  // ── Sync status ──
+  const [syncStatus, setSyncStatus] = useState("connecting"); // "connecting" | "synced" | "syncing"
+  const lastSyncedRef = useRef(null);
+  const writeTimerRef = useRef(null);
 
   // ── Toast ──
   const [toastMsg, setToastMsg] = useState("");
@@ -517,37 +503,61 @@ export default function CampingChecklist() {
   // ── New family name ──
   const [newFamilyName, setNewFamilyName] = useState("");
 
-  // ── One-time migration: ensure Upasana exists and Farhana is removed ──
+  // ── Firebase: real-time listener (mount only) ──
   useEffect(() => {
-    setFamilies((prev) => {
-      let next = prev.filter(f => f !== "farhana");
-      if (!next.includes("upasana")) {
-        const idx = next.indexOf("upasha");
-        next.splice(idx >= 0 ? idx + 1 : next.length, 0, "upasana");
+    const campingRef = dbRef(db, "campingData");
+    const unsub = onValue(campingRef, (snap) => {
+      const raw = snap.val();
+      if (!raw) { setSyncStatus("synced"); return; }
+
+      // Apply migrations inline
+      const data = { ...raw };
+      if (data.families) {
+        data.families = data.families.filter(f => f !== "farhana");
+        if (!data.families.includes("upasana")) {
+          const idx = data.families.indexOf("upasha");
+          data.families.splice(idx >= 0 ? idx + 1 : data.families.length, 0, "upasana");
+        }
       }
-      return next;
+      if (data.familyNames) {
+        delete data.familyNames.farhana;
+        if (!data.familyNames.upasana) data.familyNames.upasana = "Upasana";
+        if (data.familyNames.upasha !== "Upasha") data.familyNames.upasha = "Upasha";
+      }
+      if (data.assignments) {
+        Object.keys(data.assignments).forEach(id => {
+          if (data.assignments[id] === "farhana") data.assignments[id] = "";
+        });
+      }
+
+      const snapStr = JSON.stringify(data);
+      lastSyncedRef.current = snapStr;
+
+      if (data.families)     setFamilies(data.families);
+      if (data.familyNames)  setFamilyNames(data.familyNames);
+      if (data.assignments)  setAssignments(data.assignments);
+      if (data.supplyChecked) setSupplyChecked(data.supplyChecked);
+      if (data.mealSlots)    setMealSlots(data.mealSlots);
+      if (data.fromMenuItems) setFromMenuItems(data.fromMenuItems);
+      if (data.checked)      setChecked(data.checked);
+      setSyncStatus("synced");
     });
-    setFamilyNames((prev) => {
-      const next = { ...prev };
-      delete next.farhana;
-      if (!next.upasana) next.upasana = "Upasana";
-      if (next.upasha !== "Upasha") next.upasha = "Upasha";
-      return next;
-    });
-    setAssignments((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach(id => { if (next[id] === "farhana") next[id] = ""; });
-      return next;
-    });
+    return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── localStorage persistence ──
-  useEffect(() => { try { localStorage.setItem("cc_families", JSON.stringify(families)); } catch {} }, [families]);
-  useEffect(() => { try { localStorage.setItem("cc_familyNames", JSON.stringify(familyNames)); } catch {} }, [familyNames]);
-  useEffect(() => { try { localStorage.setItem("cc_assignments", JSON.stringify(assignments)); } catch {} }, [assignments]);
-  useEffect(() => { try { localStorage.setItem("cc_supplyChecked", JSON.stringify(supplyChecked)); } catch {} }, [supplyChecked]);
-  useEffect(() => { try { localStorage.setItem("cc_mealSlots", JSON.stringify(mealSlots)); } catch {} }, [mealSlots]);
-  useEffect(() => { try { localStorage.setItem("cc_fromMenuItems", JSON.stringify(fromMenuItems)); } catch {} }, [fromMenuItems]);
+  // ── Firebase: debounced write on state change ──
+  useEffect(() => {
+    const payload = { families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked };
+    const str = JSON.stringify(payload);
+    if (str === lastSyncedRef.current) return;
+    setSyncStatus("syncing");
+    if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
+    writeTimerRef.current = setTimeout(() => {
+      set(dbRef(db, "campingData"), payload)
+        .then(() => { lastSyncedRef.current = str; setSyncStatus("synced"); })
+        .catch(() => setSyncStatus("synced"));
+    }, 600);
+  }, [families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked]);
 
   // ── Close dropdown on outside click ──
   useEffect(() => {
@@ -690,6 +700,9 @@ export default function CampingChecklist() {
         <div style={{ fontSize: 40, marginBottom: 6 }}>🏕️</div>
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: "bold", color: "#d4e8a8", letterSpacing: ".02em", textShadow: "0 2px 12px rgba(0,0,0,.4)" }}>Camp Kettlewood · The Hilton</h1>
         <p style={{ margin: "6px 0 0", color: "#a8c87a", fontSize: 14, fontStyle: "italic" }}>4 Families · 8 Adults · 5 Kids · May 22–24, 2026</p>
+        <div style={{ marginTop: 6, fontSize: 11, color: syncStatus === "syncing" ? "#fbbf24" : syncStatus === "connecting" ? "#94a3b8" : "#8fb86a", letterSpacing: ".03em" }}>
+          {syncStatus === "connecting" ? "🔴 Connecting…" : syncStatus === "syncing" ? "🔄 Saving…" : "🟢 Live — all changes synced"}
+        </div>
         <div style={{ display: "flex", gap: 8, marginTop: 18, justifyContent: "center", flexWrap: "wrap" }}>
           {Object.values(WEATHER).map((w) => (
             <div key={w.day} style={{ background: "rgba(0,0,0,.35)", borderRadius: 10, padding: "8px 14px", border: "1px solid rgba(143,184,106,.3)", minWidth: 140, textAlign: "center" }}>
