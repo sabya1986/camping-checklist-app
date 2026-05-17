@@ -471,9 +471,12 @@ export default function CampingChecklist() {
   const [familyNames, setFamilyNames] = useState({ upasha:"Upasha", upasana:"Upasana", farzana:"Farzana", prerna:"Prerna" });
   const [assignments, setAssignments] = useState(() => {
     const init = {};
-    SUPPLY_SECTIONS.forEach((sec) => sec.items.forEach((it) => { init[it.id] = it.family || ""; }));
+    SUPPLY_SECTIONS.forEach((sec) => sec.items.forEach((it) => { init[it.id] = it.family ? [it.family] : []; }));
     return init;
   });
+  const [supplySections, setSupplySections] = useState(() =>
+    SUPPLY_SECTIONS.map(s => ({ ...s, items: s.items.map(it => ({ ...it })) }))
+  );
   const [supplyFilter, setSupplyFilter] = useState("all");
   const [supplyChecked, setSupplyChecked] = useState({});
   const [openSupplySections, setOpenSupplySections] = useState({
@@ -489,6 +492,7 @@ export default function CampingChecklist() {
   const [showDishDetailModal, setShowDishDetailModal] = useState(false);
   const [activeDishId, setActiveDishId] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [editMode, setEditMode] = useState(false);
 
   // ── Sync status ──
   const [syncStatus, setSyncStatus] = useState("connecting"); // "connecting" | "synced" | "syncing"
@@ -542,9 +546,18 @@ export default function CampingChecklist() {
           if (!familyNames.upasana) familyNames.upasana = "Upasana";
           if (familyNames.upasha !== "Upasha") familyNames.upasha = "Upasha";
 
-          const assignments = data.assignments ? { ...data.assignments } : {};
-          Object.keys(assignments).forEach(id => {
-            if (assignments[id] === "farhana") assignments[id] = "";
+          // Normalize assignments: old format was string, new format is string[]
+          const rawAsgn = data.assignments || {};
+          const assignments = {};
+          Object.keys(rawAsgn).forEach(id => {
+            const v = rawAsgn[id];
+            if (Array.isArray(v)) {
+              assignments[id] = v.filter(f => f && f !== "farhana" && f !== "unassigned");
+            } else if (typeof v === "string" && v && v !== "farhana" && v !== "unassigned") {
+              assignments[id] = [v];
+            } else {
+              assignments[id] = [];
+            }
           });
 
           // Normalize nested arrays for mealSlots
@@ -558,6 +571,11 @@ export default function CampingChecklist() {
 
           const fromMenuItems = ensureArray(data.fromMenuItems);
 
+          // Normalize supply sections (editable sections)
+          const fbSupplySections = data.supplySections
+            ? ensureArray(data.supplySections).map(sec => ({ ...sec, items: ensureArray(sec.items) }))
+            : null;
+
           const normalized = {
             families,
             familyNames,
@@ -566,6 +584,7 @@ export default function CampingChecklist() {
             mealSlots,
             fromMenuItems,
             checked: data.checked || {},
+            ...(fbSupplySections && { supplySections: fbSupplySections }),
           };
 
           const snapStr = JSON.stringify(normalized);
@@ -578,6 +597,7 @@ export default function CampingChecklist() {
           setMealSlots(normalized.mealSlots);
           setFromMenuItems(normalized.fromMenuItems);
           setChecked(normalized.checked);
+          if (fbSupplySections) setSupplySections(fbSupplySections);
         } catch (err) {
           console.error("Firebase data normalization error:", err);
         }
@@ -597,7 +617,7 @@ export default function CampingChecklist() {
   useEffect(() => {
     // Don't write until Firebase has been read at least once (prevents overwriting with defaults)
     if (!initializedRef.current) return;
-    const payload = { families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked };
+    const payload = { families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked, supplySections };
     const str = JSON.stringify(payload);
     if (str === lastSyncedRef.current) return;
     setSyncStatus("syncing");
@@ -608,7 +628,7 @@ export default function CampingChecklist() {
         .catch((err) => { console.warn("Firebase write error:", err.message); setSyncStatus("synced"); });
     }, 600);
     return () => { if (writeTimerRef.current) clearTimeout(writeTimerRef.current); };
-  }, [families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked]);
+  }, [families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked, supplySections]);
 
   // ── Close dropdown on outside click ──
   useEffect(() => {
@@ -632,11 +652,11 @@ export default function CampingChecklist() {
     return map;
   }, [mealSlots]);
 
-  // ── Effective supply sections (static + from-menu) ──
+  // ── Effective supply sections (editable + from-menu) ──
   const effectiveSections = useMemo(() => [
-    ...SUPPLY_SECTIONS,
+    ...supplySections,
     { id: "from-menu", emoji: "✨", label: "From Menu Builder", note: "Ingredients added via the Meal Plan tab.", items: fromMenuItems },
-  ], [fromMenuItems]);
+  ], [supplySections, fromMenuItems]);
 
   // ── Helpers ──
   const showToast = (msg) => {
@@ -653,30 +673,100 @@ export default function CampingChecklist() {
     return `${info.dot2} ${familyNames[key] || key}`;
   };
 
+  const getFamLabels = (fams) => {
+    if (!fams || fams.length === 0) return "⬜ Unassigned";
+    if (fams.includes("all")) return "🌍 All";
+    if (fams.length === 1) return getFamLabel(fams[0]);
+    const dots = fams.map(f => getFamilyInfo(f).dot2).join("");
+    const names = fams.map(f => familyNames[f] || f).join(", ");
+    return fams.length <= 2 ? `${dots} ${names}` : `${dots} ${fams.length} families`;
+  };
+
   const countFor = (fam) => {
-    const all = [...SUPPLY_SECTIONS.flatMap((s) => s.items), ...fromMenuItems];
+    const all = [...supplySections.flatMap((s) => s.items), ...fromMenuItems];
     return all.filter((it) => {
-      const a = assignments[it.id] || "";
-      return fam === "unassigned" ? (a === "" || a === "unassigned") : a === fam;
+      const a = assignments[it.id] || [];
+      if (fam === "unassigned") return a.length === 0;
+      return a.includes(fam) || a.includes("all");
     }).length;
   };
 
-  const assign = (itemId, fam, e) => {
-    if (e) e.stopPropagation();
-    setAssignments((p) => ({ ...p, [itemId]: fam }));
-    setOpenDropdownId(null);
-    showToast(`✓ Assigned to ${getFamLabel(fam)}`);
+  const toggleFamily = (itemId, fam) => {
+    setAssignments((p) => {
+      const cur = p[itemId] || [];
+      let next;
+      if (fam === "") {
+        next = [];
+      } else if (fam === "all") {
+        next = cur.includes("all") ? [] : ["all"];
+      } else {
+        next = cur.includes(fam)
+          ? cur.filter(f => f !== fam)
+          : [...cur.filter(f => f !== "all"), fam];
+      }
+      return { ...p, [itemId]: next };
+    });
   };
 
   const addToSupply = (ingName) => {
     const key = ingName.toLowerCase();
-    const allStatic = SUPPLY_SECTIONS.flatMap((s) => s.items);
+    const allStatic = supplySections.flatMap((s) => s.items);
     if (allStatic.some((it) => it.name.toLowerCase() === key)) return;
+    const newId = "ing-" + slugify(ingName) + "-" + Date.now();
     setFromMenuItems((prev) => {
       if (prev.some((it) => it.name.toLowerCase() === key)) return prev;
-      return [...prev, { id: "ing-" + slugify(ingName) + "-" + Date.now(), name: ingName, family: "", fromMenu: true }];
+      return [...prev, { id: newId, name: ingName, family: "", fromMenu: true }];
     });
+    setAssignments((p) => ({ ...p, [newId]: [] }));
     setOpenSupplySections((p) => ({ ...p, "from-menu": true }));
+  };
+
+  // ── Supply section / item CRUD ──
+  const updateSection = (secId, changes) =>
+    setSupplySections(prev => prev.map(s => s.id === secId ? { ...s, ...changes } : s));
+
+  const deleteSection = (secId) => {
+    if (!confirm("Delete this section and all its items?")) return;
+    const sec = supplySections.find(s => s.id === secId);
+    if (sec) {
+      setAssignments(p => {
+        const next = { ...p };
+        sec.items.forEach(it => delete next[it.id]);
+        return next;
+      });
+    }
+    setSupplySections(prev => prev.filter(s => s.id !== secId));
+    showToast("Section deleted");
+  };
+
+  const addSection = () => {
+    const id = "sec-" + Date.now();
+    setSupplySections(prev => [...prev, { id, emoji: "📦", label: "New Section", note: "", items: [] }]);
+    setOpenSupplySections(p => ({ ...p, [id]: true }));
+    showToast("✓ New section added");
+  };
+
+  const addItem = (secId) => {
+    const id = "item-" + Date.now();
+    setSupplySections(prev => prev.map(s => s.id === secId
+      ? { ...s, items: [...s.items, { id, name: "New Item", family: "" }] }
+      : s
+    ));
+    setAssignments(p => ({ ...p, [id]: [] }));
+  };
+
+  const updateItem = (secId, itemId, changes) =>
+    setSupplySections(prev => prev.map(s => s.id === secId
+      ? { ...s, items: s.items.map(it => it.id === itemId ? { ...it, ...changes } : it) }
+      : s
+    ));
+
+  const deleteItem = (secId, itemId) => {
+    setSupplySections(prev => prev.map(s => s.id === secId
+      ? { ...s, items: s.items.filter(it => it.id !== itemId) }
+      : s
+    ));
+    setAssignments(p => { const next = { ...p }; delete next[itemId]; return next; });
   };
 
   const saveDish = () => {
@@ -873,7 +963,7 @@ export default function CampingChecklist() {
         {activeTab === "supply" && (
           <div style={{ paddingTop: 14 }}>
 
-            {/* Family filter bar */}
+            {/* Toolbar: family filter + edit toggle */}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "14px 0 10px", alignItems: "center" }}>
               <span style={{ color: "#a8c87a", fontSize: 11, whiteSpace: "nowrap" }}>Family →</span>
               {[{ key: "all", label: "🌍 All" }, ...families.map((f) => ({ key: f, label: `${getFamilyInfo(f).dot2} ${familyNames[f] || f}`, dot: getFamilyInfo(f).dot })), { key: "unassigned", label: "⬜ Unassigned" }].map(({ key, label, dot }) => {
@@ -888,7 +978,8 @@ export default function CampingChecklist() {
                   }}>{label}</button>
                 );
               })}
-              <button onClick={() => setShowFamiliesModal(true)} style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia,serif", fontSize: 12, border: "1.5px dashed rgba(143,184,106,.4)", background: "rgba(143,184,106,.08)", color: "#8fb86a" }}>⚙️ Manage</button>
+              <button onClick={() => setShowFamiliesModal(true)} style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia,serif", fontSize: 12, border: "1.5px dashed rgba(143,184,106,.4)", background: "rgba(143,184,106,.08)", color: "#8fb86a" }}>⚙️ Families</button>
+              <button onClick={() => setEditMode(m => !m)} style={{ padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Georgia,serif", fontSize: 12, border: editMode ? "1.5px solid #8fb86a" : "1.5px dashed rgba(143,184,106,.4)", background: editMode ? "rgba(143,184,106,.25)" : "rgba(143,184,106,.08)", color: editMode ? "#d4e8a8" : "#8fb86a", marginLeft: "auto" }}>{editMode ? "✓ Done Editing" : "✏️ Edit Sections"}</button>
             </div>
 
             {/* Summary cards */}
@@ -909,82 +1000,133 @@ export default function CampingChecklist() {
 
             {/* Sections */}
             {effectiveSections.map((sec) => {
-              const visItems = sec.items.filter((it) => {
-                if (supplyFilter === "all") return true;
-                const a = assignments[it.id] || "";
-                if (supplyFilter === "unassigned") return a === "" || a === "unassigned";
-                return a === supplyFilter || a === "all";
-              });
-              if (visItems.length === 0 && sec.id !== "from-menu") return null;
-              if (visItems.length === 0 && sec.id === "from-menu" && supplyFilter !== "all") return null;
+              const isFromMenu = sec.id === "from-menu";
+              const visItems = editMode
+                ? sec.items  // show all items in edit mode
+                : sec.items.filter((it) => {
+                    if (supplyFilter === "all") return true;
+                    const a = assignments[it.id] || [];
+                    if (supplyFilter === "unassigned") return a.length === 0;
+                    return a.includes(supplyFilter) || a.includes("all");
+                  });
+              if (!editMode && visItems.length === 0 && !isFromMenu) return null;
+              if (!editMode && visItems.length === 0 && isFromMenu && supplyFilter !== "all") return null;
 
               const isOpen = openSupplySections[sec.id] ?? false;
+              const inpSm = { background: "rgba(0,0,0,.4)", border: "1px solid rgba(143,184,106,.35)", borderRadius: 5, padding: "3px 7px", color: "#f5f0e8", fontSize: 12, fontFamily: "Georgia,serif", outline: "none" };
               return (
                 <div key={sec.id} style={{ marginBottom: 10 }}>
-                  <button onClick={() => setOpenSupplySections((p) => ({ ...p, [sec.id]: !p[sec.id] }))} style={{ width: "100%", textAlign: "left", background: "rgba(0,0,0,.4)", border: "1px solid rgba(143,184,106,.3)", borderRadius: isOpen ? "10px 10px 0 0" : 10, padding: "10px 14px", cursor: "pointer", color: "#d4e8a8", display: "flex", alignItems: "center", gap: 8, fontFamily: "Georgia,serif" }}>
-                    <span style={{ fontSize: 16 }}>{sec.emoji}</span>
-                    <span style={{ fontWeight: "bold", fontSize: 13, flex: 1 }}>{sec.label}</span>
-                    <span style={{ background: "rgba(143,184,106,.2)", borderRadius: 10, padding: "1px 7px", fontSize: 11, color: "#8fb86a" }}>{visItems.length} items</span>
-                    <span style={{ color: "#8fb86a", fontSize: 14, transition: "transform .2s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none" }}>▸</span>
-                  </button>
+                  {/* Section header */}
+                  <div style={{ width: "100%", textAlign: "left", background: "rgba(0,0,0,.4)", border: "1px solid rgba(143,184,106,.3)", borderRadius: isOpen ? "10px 10px 0 0" : 10, padding: "10px 14px", color: "#d4e8a8", display: "flex", alignItems: "center", gap: 8, fontFamily: "Georgia,serif" }}>
+                    {editMode && !isFromMenu ? (
+                      <>
+                        <input value={sec.emoji} onChange={e => updateSection(sec.id, { emoji: e.target.value })} style={{ ...inpSm, width: 34, textAlign: "center" }} />
+                        <input value={sec.label} onChange={e => updateSection(sec.id, { label: e.target.value })} style={{ ...inpSm, flex: 1 }} />
+                        <button onClick={() => deleteSection(sec.id)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 15, padding: "0 2px" }} title="Delete section">🗑</button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 16, cursor: "pointer" }} onClick={() => setOpenSupplySections(p => ({ ...p, [sec.id]: !p[sec.id] }))}>{sec.emoji}</span>
+                        <span style={{ fontWeight: "bold", fontSize: 13, flex: 1, cursor: "pointer" }} onClick={() => setOpenSupplySections(p => ({ ...p, [sec.id]: !p[sec.id] }))}>{sec.label}</span>
+                        <span style={{ background: "rgba(143,184,106,.2)", borderRadius: 10, padding: "1px 7px", fontSize: 11, color: "#8fb86a" }}>{visItems.length} items</span>
+                        <span onClick={() => setOpenSupplySections(p => ({ ...p, [sec.id]: !p[sec.id] }))} style={{ color: "#8fb86a", fontSize: 14, transition: "transform .2s", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", cursor: "pointer" }}>▸</span>
+                      </>
+                    )}
+                  </div>
 
-                  {isOpen && (
+                  {(isOpen || editMode) && (
                     <div style={{ background: "rgba(0,0,0,.22)", border: "1px solid rgba(143,184,106,.2)", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "8px 12px 12px" }}>
-                      {sec.note && <div style={{ background: "rgba(143,184,106,.1)", borderLeft: "3px solid #8fb86a", borderRadius: "0 5px 5px 0", padding: "5px 10px", marginBottom: 8, color: "#b8d88a", fontSize: 11, fontStyle: "italic" }}>ℹ️ {sec.note}</div>}
-                      {visItems.length === 0 && sec.id === "from-menu" && (
+                      {sec.note && !editMode && <div style={{ background: "rgba(143,184,106,.1)", borderLeft: "3px solid #8fb86a", borderRadius: "0 5px 5px 0", padding: "5px 10px", marginBottom: 8, color: "#b8d88a", fontSize: 11, fontStyle: "italic" }}>ℹ️ {sec.note}</div>}
+                      {visItems.length === 0 && isFromMenu && !editMode && (
                         <div style={{ color: "#8fb86a", fontSize: 12, fontStyle: "italic", padding: "4px 0" }}>No items yet — add dishes in the Meal Plan tab.</div>
                       )}
                       {visItems.map((it) => {
                         const done = supplyChecked[it.id];
-                        const fam = assignments[it.id] || "";
+                        const fams = assignments[it.id] || [];
                         const dishes = dishUsageMap[it.name.toLowerCase()] || [];
-                        const fc = fam ? getFamColor(fam) : null;
+                        // Badge style: single family = colored, multiple = neutral green, none = gray
+                        const badgeStyle = fams.length === 0
+                          ? { bg: "rgba(148,163,184,.1)", border: "rgba(148,163,184,.3)", text: "#94a3b8" }
+                          : fams.includes("all") ? getFamColor("all")
+                          : fams.length === 1 ? (getFamColor(fams[0]) || { bg: "rgba(52,211,153,.15)", border: "rgba(52,211,153,.4)", text: "#a7f3d0" })
+                          : { bg: "rgba(143,184,106,.15)", border: "rgba(143,184,106,.4)", text: "#d4e8a8" };
                         return (
                           <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 2px", borderRadius: 5, cursor: "default" }}>
-                            {/* Checkbox */}
-                            <div onClick={() => setSupplyChecked((p) => ({ ...p, [it.id]: !p[it.id] }))} style={{ width: 18, height: 18, minWidth: 18, borderRadius: 4, border: done ? "2px solid #8fb86a" : "2px solid rgba(143,184,106,.4)", background: done ? "#8fb86a" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all .15s" }}>
-                              {done && <span style={{ color: "#1a2e1a", fontSize: 11, fontWeight: "bold" }}>✓</span>}
-                            </div>
+                            {/* Checkbox (hidden in edit mode) */}
+                            {!editMode && (
+                              <div onClick={() => setSupplyChecked((p) => ({ ...p, [it.id]: !p[it.id] }))} style={{ width: 18, height: 18, minWidth: 18, borderRadius: 4, border: done ? "2px solid #8fb86a" : "2px solid rgba(143,184,106,.4)", background: done ? "#8fb86a" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all .15s" }}>
+                                {done && <span style={{ color: "#1a2e1a", fontSize: 11, fontWeight: "bold" }}>✓</span>}
+                              </div>
+                            )}
 
-                            {/* Name + badges */}
-                            <span style={{ flex: 1, fontSize: 12, color: done ? "#6a9050" : "#e8f0d8", textDecoration: done ? "line-through" : "none", lineHeight: 1.4 }}>
-                              {it.name}
-                              {it.fromMenu && <span style={{ fontSize: 9, background: "rgba(52,211,153,.2)", border: "1px solid rgba(52,211,153,.4)", color: "#6ee7b7", borderRadius: 4, padding: "1px 5px", marginLeft: 4, verticalAlign: "middle" }}>NEW</span>}
-                              {dishes.length > 0 && (
-                                <span style={{ position: "relative", display: "inline-block", marginLeft: 4 }}>
-                                  <span title={dishes.length > 1 ? `Used in: ${dishes.join(", ")}` : dishes[0]} style={{ fontSize: 10, background: "rgba(251,191,36,.15)", border: "1px solid rgba(251,191,36,.35)", color: "#fde68a", borderRadius: 4, padding: "1px 6px", verticalAlign: "middle", cursor: "default" }}>
-                                    🍽️ {dishes.length > 1 ? `${dishes.length} dishes` : dishes[0]}
+                            {/* Name — input in edit mode, text otherwise */}
+                            {editMode && !isFromMenu ? (
+                              <input value={it.name} onChange={e => updateItem(sec.id, it.id, { name: e.target.value })} style={{ ...inpSm, flex: 1 }} />
+                            ) : (
+                              <span style={{ flex: 1, fontSize: 12, color: done ? "#6a9050" : "#e8f0d8", textDecoration: done ? "line-through" : "none", lineHeight: 1.4 }}>
+                                {it.name}
+                                {it.fromMenu && <span style={{ fontSize: 9, background: "rgba(52,211,153,.2)", border: "1px solid rgba(52,211,153,.4)", color: "#6ee7b7", borderRadius: 4, padding: "1px 5px", marginLeft: 4, verticalAlign: "middle" }}>NEW</span>}
+                                {dishes.length > 0 && (
+                                  <span style={{ marginLeft: 4 }}>
+                                    <span title={`Used in: ${dishes.join(", ")}`} style={{ fontSize: 10, background: "rgba(251,191,36,.15)", border: "1px solid rgba(251,191,36,.35)", color: "#fde68a", borderRadius: 4, padding: "1px 6px", verticalAlign: "middle", cursor: "default" }}>
+                                      🍽️ {dishes.length > 1 ? `${dishes.length} dishes` : dishes[0]}
+                                    </span>
                                   </span>
-                                </span>
-                              )}
-                            </span>
-
-                            {/* Assign dropdown */}
-                            <div style={{ position: "relative", display: "inline-block" }} onClick={(e) => e.stopPropagation()}>
-                              <span onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === it.id ? null : it.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: "bold", cursor: "pointer", border: `1px solid ${fam ? (fc?.border || "rgba(143,184,106,.4)") : "rgba(148,163,184,.3)"}`, background: fam ? (fc?.bg || "rgba(52,211,153,.15)") : "rgba(148,163,184,.1)", color: fam ? (fc?.text || "#a7f3d0") : "#94a3b8", whiteSpace: "nowrap", userSelect: "none" }}>
-                                {getFamLabel(fam)} ✎
+                                )}
                               </span>
-                              {openDropdownId === it.id && (
-                                <div style={{ position: "absolute", top: "calc(100% + 3px)", right: 0, zIndex: 200, background: "#1e3518", border: "1px solid #8fb86a", borderRadius: 8, padding: 5, minWidth: 140, boxShadow: "0 8px 24px rgba(0,0,0,.6)" }}>
-                                  {families.map((f) => (
-                                    <button key={f} onClick={(e) => assign(it.id, f, e)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: "#c8d8a8", fontSize: 11, padding: "5px 9px", cursor: "pointer", borderRadius: 4, fontFamily: "Georgia,serif" }}>
-                                      {getFamilyInfo(f).dot2} {familyNames[f] || f}
-                                    </button>
-                                  ))}
-                                  <div style={{ height: 1, background: "rgba(143,184,106,.2)", margin: "3px 0" }} />
-                                  <button onClick={(e) => assign(it.id, "all", e)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: "#c8d8a8", fontSize: 11, padding: "5px 9px", cursor: "pointer", borderRadius: 4, fontFamily: "Georgia,serif" }}>🌍 All Families</button>
-                                  <button onClick={(e) => assign(it.id, "", e)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: "#c8d8a8", fontSize: 11, padding: "5px 9px", cursor: "pointer", borderRadius: 4, fontFamily: "Georgia,serif" }}>⬜ Unassigned</button>
-                                </div>
-                              )}
-                            </div>
+                            )}
+
+                            {/* Delete button (edit mode only) */}
+                            {editMode && !isFromMenu && (
+                              <button onClick={() => deleteItem(sec.id, it.id)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>🗑</button>
+                            )}
+
+                            {/* Multi-family assign dropdown (hidden in edit mode) */}
+                            {!editMode && (
+                              <div style={{ position: "relative", display: "inline-block", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                                <span onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === it.id ? null : it.id); }} style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: "bold", cursor: "pointer", border: `1px solid ${badgeStyle.border}`, background: badgeStyle.bg, color: badgeStyle.text, whiteSpace: "nowrap", userSelect: "none", maxWidth: 160 }}>
+                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{getFamLabels(fams)}</span> ✎
+                                </span>
+                                {openDropdownId === it.id && (
+                                  <div style={{ position: "absolute", top: "calc(100% + 3px)", right: 0, zIndex: 200, background: "#1e3518", border: "1px solid #8fb86a", borderRadius: 8, padding: "6px 4px", minWidth: 160, boxShadow: "0 8px 24px rgba(0,0,0,.6)" }}>
+                                    <div style={{ padding: "2px 8px 6px", fontSize: 10, color: "#8fb86a", borderBottom: "1px solid rgba(143,184,106,.2)", marginBottom: 4 }}>Select one or more families</div>
+                                    {families.map((f) => {
+                                      const checked = fams.includes(f);
+                                      const fi = getFamilyInfo(f);
+                                      return (
+                                        <label key={f} onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 9px", cursor: "pointer", borderRadius: 4, background: checked ? "rgba(143,184,106,.12)" : "transparent" }}>
+                                          <input type="checkbox" checked={checked} onChange={() => toggleFamily(it.id, f)} style={{ accentColor: fi.dot, cursor: "pointer" }} />
+                                          <span style={{ color: "#c8d8a8", fontSize: 11 }}>{fi.dot2} {familyNames[f] || f}</span>
+                                        </label>
+                                      );
+                                    })}
+                                    <div style={{ height: 1, background: "rgba(143,184,106,.2)", margin: "4px 0" }} />
+                                    <label onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 9px", cursor: "pointer", borderRadius: 4, background: fams.includes("all") ? "rgba(143,184,106,.12)" : "transparent" }}>
+                                      <input type="checkbox" checked={fams.includes("all")} onChange={() => toggleFamily(it.id, "all")} style={{ accentColor: "#8fb86a", cursor: "pointer" }} />
+                                      <span style={{ color: "#c8d8a8", fontSize: 11 }}>🌍 All Families</span>
+                                    </label>
+                                    <button onClick={e => { e.stopPropagation(); toggleFamily(it.id, ""); setOpenDropdownId(null); }} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: "#94a3b8", fontSize: 11, padding: "5px 9px", cursor: "pointer", borderRadius: 4, fontFamily: "Georgia,serif", marginTop: 2 }}>⬜ Clear / Unassigned</button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
+                      {/* Add item button (edit mode, non-from-menu sections) */}
+                      {editMode && !isFromMenu && (
+                        <button onClick={() => addItem(sec.id)} style={{ width: "100%", marginTop: 8, padding: "6px", background: "transparent", border: "1px dashed rgba(143,184,106,.4)", borderRadius: 6, color: "#8fb86a", fontSize: 12, cursor: "pointer", fontFamily: "Georgia,serif" }}>＋ Add item</button>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
+
+            {/* Add Section button (edit mode only) */}
+            {editMode && (
+              <button onClick={addSection} style={{ width: "100%", marginTop: 4, padding: "10px", background: "rgba(143,184,106,.1)", border: "1px dashed rgba(143,184,106,.5)", borderRadius: 10, color: "#8fb86a", fontSize: 13, cursor: "pointer", fontFamily: "Georgia,serif" }}>＋ Add New Section</button>
+            )}
           </div>
         )}
 
