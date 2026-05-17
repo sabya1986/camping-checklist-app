@@ -398,6 +398,14 @@ const INITIAL_MEAL_SLOTS = [
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+// Firebase Realtime Database can return arrays as numeric-keyed objects.
+// This converts them back to proper arrays safely.
+function ensureArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return Object.values(val);
+}
+
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
@@ -486,6 +494,7 @@ export default function CampingChecklist() {
   const [syncStatus, setSyncStatus] = useState("connecting"); // "connecting" | "synced" | "syncing"
   const lastSyncedRef = useRef(null);
   const writeTimerRef = useRef(null);
+  const initializedRef = useRef(false); // guard: don't write until first Firebase read completes
 
   // ── Toast ──
   const [toastMsg, setToastMsg] = useState("");
@@ -506,47 +515,88 @@ export default function CampingChecklist() {
   // ── Firebase: real-time listener (mount only) ──
   useEffect(() => {
     const campingRef = dbRef(db, "campingData");
-    const unsub = onValue(campingRef, (snap) => {
-      const raw = snap.val();
-      if (!raw) { setSyncStatus("synced"); return; }
+    const unsub = onValue(
+      campingRef,
+      (snap) => {
+        const raw = snap.val();
+        initializedRef.current = true;
 
-      // Apply migrations inline
-      const data = { ...raw };
-      if (data.families) {
-        data.families = data.families.filter(f => f !== "farhana");
-        if (!data.families.includes("upasana")) {
-          const idx = data.families.indexOf("upasha");
-          data.families.splice(idx >= 0 ? idx + 1 : data.families.length, 0, "upasana");
+        if (!raw) {
+          // No data yet in Firebase — write our defaults on next tick
+          setSyncStatus("synced");
+          return;
         }
-      }
-      if (data.familyNames) {
-        delete data.familyNames.farhana;
-        if (!data.familyNames.upasana) data.familyNames.upasana = "Upasana";
-        if (data.familyNames.upasha !== "Upasha") data.familyNames.upasha = "Upasha";
-      }
-      if (data.assignments) {
-        Object.keys(data.assignments).forEach(id => {
-          if (data.assignments[id] === "farhana") data.assignments[id] = "";
-        });
-      }
 
-      const snapStr = JSON.stringify(data);
-      lastSyncedRef.current = snapStr;
+        try {
+          const data = { ...raw };
 
-      if (data.families)     setFamilies(data.families);
-      if (data.familyNames)  setFamilyNames(data.familyNames);
-      if (data.assignments)  setAssignments(data.assignments);
-      if (data.supplyChecked) setSupplyChecked(data.supplyChecked);
-      if (data.mealSlots)    setMealSlots(data.mealSlots);
-      if (data.fromMenuItems) setFromMenuItems(data.fromMenuItems);
-      if (data.checked)      setChecked(data.checked);
-      setSyncStatus("synced");
-    });
+          // Normalize arrays (Firebase can return numeric-keyed objects instead of arrays)
+          let families = ensureArray(data.families).filter(f => f !== "farhana");
+          if (!families.includes("upasana")) {
+            const idx = families.indexOf("upasha");
+            families.splice(idx >= 0 ? idx + 1 : families.length, 0, "upasana");
+          }
+
+          const familyNames = data.familyNames ? { ...data.familyNames } : {};
+          delete familyNames.farhana;
+          if (!familyNames.upasana) familyNames.upasana = "Upasana";
+          if (familyNames.upasha !== "Upasha") familyNames.upasha = "Upasha";
+
+          const assignments = data.assignments ? { ...data.assignments } : {};
+          Object.keys(assignments).forEach(id => {
+            if (assignments[id] === "farhana") assignments[id] = "";
+          });
+
+          // Normalize nested arrays for mealSlots
+          const mealSlots = ensureArray(data.mealSlots).map(slot => ({
+            ...slot,
+            dishes: ensureArray(slot.dishes).map(dish => ({
+              ...dish,
+              ings: ensureArray(dish.ings),
+            })),
+          }));
+
+          const fromMenuItems = ensureArray(data.fromMenuItems);
+
+          const normalized = {
+            families,
+            familyNames,
+            assignments,
+            supplyChecked: data.supplyChecked || {},
+            mealSlots,
+            fromMenuItems,
+            checked: data.checked || {},
+          };
+
+          const snapStr = JSON.stringify(normalized);
+          lastSyncedRef.current = snapStr;
+
+          setFamilies(normalized.families);
+          setFamilyNames(normalized.familyNames);
+          setAssignments(normalized.assignments);
+          setSupplyChecked(normalized.supplyChecked);
+          setMealSlots(normalized.mealSlots);
+          setFromMenuItems(normalized.fromMenuItems);
+          setChecked(normalized.checked);
+        } catch (err) {
+          console.error("Firebase data normalization error:", err);
+        }
+        setSyncStatus("synced");
+      },
+      (err) => {
+        // Permission denied or network error — fall back to local defaults silently
+        console.warn("Firebase read error:", err.message);
+        initializedRef.current = true;
+        setSyncStatus("synced");
+      }
+    );
     return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Firebase: debounced write on state change ──
   useEffect(() => {
+    // Don't write until Firebase has been read at least once (prevents overwriting with defaults)
+    if (!initializedRef.current) return;
     const payload = { families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked };
     const str = JSON.stringify(payload);
     if (str === lastSyncedRef.current) return;
@@ -555,8 +605,9 @@ export default function CampingChecklist() {
     writeTimerRef.current = setTimeout(() => {
       set(dbRef(db, "campingData"), payload)
         .then(() => { lastSyncedRef.current = str; setSyncStatus("synced"); })
-        .catch(() => setSyncStatus("synced"));
+        .catch((err) => { console.warn("Firebase write error:", err.message); setSyncStatus("synced"); });
     }, 600);
+    return () => { if (writeTimerRef.current) clearTimeout(writeTimerRef.current); };
   }, [families, familyNames, assignments, supplyChecked, mealSlots, fromMenuItems, checked]);
 
   // ── Close dropdown on outside click ──
