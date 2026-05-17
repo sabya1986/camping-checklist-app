@@ -841,6 +841,11 @@ export default function CampingChecklist() {
         <div style={{ fontSize: 40, marginBottom: 6 }}>🏕️</div>
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: "bold", color: "#d4e8a8", letterSpacing: ".02em", textShadow: "0 2px 12px rgba(0,0,0,.4)" }}>Camp Kettlewood · The Hilton</h1>
         <p style={{ margin: "6px 0 0", color: "#a8c87a", fontSize: 14, fontStyle: "italic" }}>4 Families · 8 Adults · 5 Kids · May 22–24, 2026</p>
+        <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap", fontSize: 12, color: "#8aaa68" }}>
+          <span>📍 <a href="https://maps.google.com/?q=W3524+State+Rd+20+East+Troy+WI+53120" target="_blank" rel="noopener noreferrer" style={{ color: "#8aaa68", textDecoration: "underline", textDecorationColor: "rgba(143,184,106,.4)" }}>W3524 State Rd 20, East Troy, WI 53120</a></span>
+          <span>✉️ <a href="mailto:info@campkettlewood.com" style={{ color: "#8aaa68", textDecoration: "underline", textDecorationColor: "rgba(143,184,106,.4)" }}>info@campkettlewood.com</a></span>
+          <span>📞 <a href="tel:6083861222" style={{ color: "#8aaa68", textDecoration: "underline", textDecorationColor: "rgba(143,184,106,.4)" }}>608-386-1222</a></span>
+        </div>
         <div style={{ marginTop: 6, fontSize: 11, color: syncStatus === "syncing" ? "#fbbf24" : syncStatus === "connecting" ? "#94a3b8" : "#8fb86a", letterSpacing: ".03em" }}>
           {syncStatus === "connecting" ? "🔴 Connecting…" : syncStatus === "syncing" ? "🔄 Saving…" : "🟢 Live — all changes synced"}
         </div>
